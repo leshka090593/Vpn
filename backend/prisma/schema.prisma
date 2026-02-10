@@ -1,0 +1,108 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserStatus {
+  ACTIVE
+  BLOCKED
+}
+
+enum AuthSessionStatus {
+  PENDING
+  CONFIRMED
+  CONSUMED
+  EXPIRED
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  EXPIRED
+  CANCELED
+  IN_GRACE
+}
+
+model User {
+  id               String         @id @default(uuid())
+  telegramId       String         @unique @map("telegram_id")
+  telegramUsername String?        @map("telegram_username")
+  createdAt        DateTime       @default(now()) @map("created_at")
+  lastLoginAt      DateTime?      @map("last_login_at")
+  status           UserStatus     @default(ACTIVE)
+  subscriptions    Subscription[]
+  provisions       Provision[]
+
+  @@map("users")
+}
+
+model AuthSession {
+  id         String            @id @default(uuid())
+  nonce      String            @unique
+  expiresAt  DateTime          @map("expires_at")
+  telegramId String?           @map("telegram_id")
+  status     AuthSessionStatus @default(PENDING)
+  createdAt  DateTime          @default(now()) @map("created_at")
+  updatedAt  DateTime          @updatedAt @map("updated_at")
+
+  @@map("auth_sessions")
+}
+
+model Subscription {
+  id                String             @id @default(uuid())
+  userId            String             @map("user_id")
+  productId         String             @map("product_id")
+  purchaseTokenHash String?            @map("purchase_token_hash")
+  status            SubscriptionStatus
+  expiresAt         DateTime?          @map("expires_at")
+  createdAt         DateTime           @default(now()) @map("created_at")
+  updatedAt         DateTime           @updatedAt @map("updated_at")
+  user              User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("subscriptions")
+}
+
+model Country {
+  code      String   @id
+  name      String
+  enabled   Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  servers   Server[]
+
+  @@map("countries")
+}
+
+model Server {
+  id            String      @id @default(uuid())
+  name          String
+  countryCode   String      @map("country_code")
+  enabled       Boolean     @default(true)
+  weight        Int         @default(100)
+  panelUrl      String      @map("panel_url")
+  panelUsername String?     @map("panel_username")
+  panelPassword String?     @map("panel_password")
+  panelToken    String?     @map("panel_token")
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime    @updatedAt @map("updated_at")
+  country       Country     @relation(fields: [countryCode], references: [code], onDelete: Restrict)
+  provisions    Provision[]
+
+  @@map("servers")
+}
+
+model Provision {
+  id            String    @id @default(uuid())
+  userId        String    @map("user_id")
+  serverId      String    @map("server_id")
+  vlessClientId String    @map("vless_client_id")
+  issuedAt      DateTime  @default(now()) @map("issued_at")
+  revokedAt     DateTime? @map("revoked_at")
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  server        Server    @relation(fields: [serverId], references: [id], onDelete: Cascade)
+
+  @@map("provisions")
+}

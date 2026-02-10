@@ -1,0 +1,38 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: vpn-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: vpn_mvp
+      POSTGRES_USER: vpn
+      POSTGRES_PASSWORD: vpn
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  backend:
+    build:
+      context: ../backend
+    container_name: vpn-backend
+    restart: unless-stopped
+    env_file:
+      - ../backend/.env
+    depends_on:
+      - postgres
+    ports:
+      - "8080:8080"
+
+  telegram-bot:
+    build:
+      context: ../telegram-bot
+    container_name: vpn-telegram-bot
+    restart: unless-stopped
+    env_file:
+      - ../telegram-bot/.env
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:
